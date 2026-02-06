@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kasio Compiler</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --white: #ffffff;
+            --primary: #2563eb;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --input-bg: #ffffff;
+            --output-bg: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* Container chính xếp chồng dọc */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        textarea {
+            flex: 1;
+            width: 100%;
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+        }
+
+        #input-code {
+            background-color: var(--input-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        #output-result {
+            background-color: var(--output-bg);
+            color: var(--primary);
+            border-left: 4px solid var(--primary);
+        }
+
+        /* Thanh công cụ dưới cùng */
+        .toolbar {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        select {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            outline: none;
+            background: var(--white);
+        }
+
+        .btn-build {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 35px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-build:hover {
+            opacity: 0.9;
+        }
+
+        /* Thanh loading tinh tế */
+        .loader {
+            height: 3px;
+            width: 100%;
+            background: transparent;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        .loader-fill {
+            height: 100%;
+            width: 0;
+            background: var(--primary);
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
+
+<div class="loader"><div class="loader-fill" id="bar"></div></div>
+
+<div class="main-container">
+    <div class="section">
+        <div class="label">MÃ NGUỒN (INPUT)</div>
+        <textarea id="input-code" placeholder="Dán mã code tại đây..."></textarea>
+    </div>
+
+    <div class="section">
+        <div class="label">
+            <span>KẾT QUẢ (OUTPUT)</span>
+            <span onclick="copyCode()" style="cursor:pointer; font-size:11px; text-decoration:underline;">Sao chép</span>
+        </div>
+        <textarea id="output-result" readonly placeholder="Kết quả biên dịch sẽ xuất hiện ở đây..."></textarea>
+    </div>
+</div>
+
+<div class="toolbar">
+    <div>
+        <span style="font-size: 14px; margin-right: 8px;">Core:</span>
+        <select id="target">
+            <option value="580VNX">580VNX System</option>
+            <option value="880BTG">880BTG System</option>
+        </select>
+    </div>
+    <button class="btn-build" onclick="startCompile()">BIÊN DỊCH NGAY</button>
+</div>
+
+<script>
+    async function startCompile() {
+        const code = document.getElementById('input-code').value;
+        const res = document.getElementById('output-result');
+        const bar = document.getElementById('bar');
+        const core = document.getElementById('target').value;
+
+        if (!code.trim()) return alert("Vui lòng nhập code!");
+
+        res.value = "Đang xử lý...";
+        let p = 0;
+        const interval = setInterval(async () => {
+            p += 10;
+            bar.style.width = p + "%";
+            if (p >= 100) {
+                clearInterval(interval);
+                
+                // Gửi tới app.py
+                try {
+                    const response = await fetch('/compile', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ code: code, type: core })
+                    });
+                    const data = await response.json();
+                    res.value = data.status === 'success' ? data.result : "Lỗi: " + data.message;
+                } catch (e) {
+                    res.value = "Lỗi: Không thể kết nối Backend.";
+                }
+
+                setTimeout(() => bar.style.width = "0%", 400);
+            }
+        }, 50);
+    }
+
+    function copyCode() {
+        const text = document.getElementById('output-result');
+        text.select();
+        document.execCommand('copy');
+        alert("Đã copy!");
+    }
+</script>
+
+</body>
+</html>
